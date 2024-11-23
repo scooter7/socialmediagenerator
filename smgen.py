@@ -2,6 +2,10 @@ import streamlit as st
 from langchain.agents import initialize_agent, load_tools, Tool, AgentType
 from langchain_openai import OpenAI
 import os
+import logging
+
+# Set up logging for debugging
+logging.basicConfig(level=logging.DEBUG)
 
 # Set environment variables
 os.environ["SERPER_API_KEY"] = st.secrets["SERPER_API_KEY"]
@@ -24,16 +28,22 @@ self_ask_with_search = initialize_agent(
     tools,
     llm,
     agent=AgentType.SELF_ASK_WITH_SEARCH,
-    verbose=True
+    verbose=True,
+    handle_parsing_errors=True  # Enable parsing error handling
 )
 
 def search_college_facts(college_name):
     """Search for interesting facts about the college/university."""
-    query = f"Interesting facts about {college_name}"
+    query = f"Find some interesting and notable facts about {college_name}."
     try:
         response = self_ask_with_search.run(query)
+        if response.strip().lower() in ["no", "none", "null"]:
+            raise ValueError("No valid output was returned from the agent.")
         return response
-    except Exception as e:
+    except ValueError as e:  # Catch parsing errors
+        st.error("Output parsing error occurred. Retrying may help.")
+        return ""
+    except Exception as e:  # Catch all other errors
         st.error(f"Error fetching results: {e}")
         return ""
 
