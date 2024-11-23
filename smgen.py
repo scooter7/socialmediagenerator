@@ -32,6 +32,20 @@ self_ask_with_search = initialize_agent(
     handle_parsing_errors=True  # Enable parsing error handling
 )
 
+# Function to manage post length limits
+def limit_post_length(content, channel):
+    """Limit the length of the content based on the channel."""
+    limits = {
+        "X": 280,  # Twitter character limit
+        "Facebook": 2000,  # Facebook recommended limit
+        "LinkedIn": 3000,  # LinkedIn recommended limit
+        "Instagram": 2200,  # Instagram caption limit
+        "TikTok": 150  # TikTok caption limit
+    }
+    max_length = limits.get(channel, 2000)  # Default limit if unspecified
+    return content[:max_length]
+
+# Function to search for college facts
 def search_college_facts(college_name):
     """Search for interesting facts about the college/university."""
     query = f"Find some interesting and notable facts about {college_name}."
@@ -47,6 +61,7 @@ def search_college_facts(college_name):
         st.error(f"Error fetching results: {e}")
         return ""
 
+# Function to generate social media content
 def generate_social_content_with_retry(main_content, selected_channels, retries=3, delay=5):
     """Generate social media content for multiple channels with retry logic."""
     generated_content = {}
@@ -56,7 +71,8 @@ def generate_social_content_with_retry(main_content, selected_channels, retries=
                 prompt = f"Generate a {channel.capitalize()} post based on this content:\n{main_content}\n"
                 response = llm(prompt)
                 if response:
-                    generated_content[channel] = response.strip()
+                    limited_content = limit_post_length(response.strip(), channel)
+                    generated_content[channel] = limited_content
                 break
             except Exception as e:
                 if i < retries - 1:
@@ -65,8 +81,12 @@ def generate_social_content_with_retry(main_content, selected_channels, retries=
                     generated_content[channel] = f"Error generating content: {str(e)}"
     return generated_content
 
-# Streamlit UI
+# Streamlit UI with state management
 st.title("Social Media Post Creator for Colleges/Universities")
+
+# Initialize session state
+if "social_content" not in st.session_state:
+    st.session_state["social_content"] = {}
 
 # Inputs
 college_name = st.text_input("Enter the name of the college/university:")
@@ -86,19 +106,21 @@ if st.button("Generate Social Media Content"):
         if facts:
             st.success("Interesting facts found. Generating posts...")
             main_content = f"Topic: {topic}\nInteresting Facts: {facts}"
-            social_content = generate_social_content_with_retry(main_content, selected_channels)
-
-            for channel, content in social_content.items():
-                st.subheader(f"{channel.capitalize()} Post")
-                st.text_area(f"Generated Content for {channel}:", content, height=200)
-
-                # Save content as text file
-                filename = f"{channel}_post.txt"
-                st.download_button(
-                    label=f"Download {channel.capitalize()} Post",
-                    data=content,
-                    file_name=filename,
-                    mime="text/plain"
-                )
+            st.session_state["social_content"] = generate_social_content_with_retry(main_content, selected_channels)
         else:
             st.error("No facts found. Try a different college/university.")
+
+# Display generated posts
+if st.session_state["social_content"]:
+    for channel, content in st.session_state["social_content"].items():
+        st.subheader(f"{channel.capitalize()} Post")
+        st.text_area(f"Generated Content for {channel}:", content, height=200)
+
+        # Save content as text file
+        filename = f"{channel}_post.txt"
+        st.download_button(
+            label=f"Download {channel.capitalize()} Post",
+            data=content,
+            file_name=filename,
+            mime="text/plain"
+        )
