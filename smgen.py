@@ -1,24 +1,17 @@
 import streamlit as st
-from langchain_community.utilities import GoogleSerperAPIWrapper
+from langchain.agents import initialize_agent, load_tools, AgentType
 from langchain_openai import OpenAI
-from langchain.agents import initialize_agent, Tool
-from langchain.agents import AgentType
 import os
 
 # Set environment variables
 os.environ["SERPER_API_KEY"] = st.secrets["SERPER_API_KEY"]
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
-# Initialize LangChain components
+# Initialize OpenAI model
 llm = OpenAI(temperature=0)
-search = GoogleSerperAPIWrapper()
-tools = [
-    Tool(
-        name="Intermediate Answer",
-        func=search.run,
-        description="Useful for answering questions using search."
-    )
-]
+
+# Load Serper tool
+tools = load_tools(["google-serper"])
 
 # Initialize self-ask-with-search agent
 self_ask_with_search = initialize_agent(
@@ -28,7 +21,6 @@ self_ask_with_search = initialize_agent(
     verbose=True
 )
 
-# Helper function to search for facts about a college
 def search_college_facts(college_name):
     """Search for interesting facts about the college/university."""
     query = f"Interesting facts about {college_name}"
@@ -39,7 +31,6 @@ def search_college_facts(college_name):
         st.error(f"Error fetching results: {e}")
         return ""
 
-# Helper function to generate social media posts
 def generate_social_content_with_retry(main_content, selected_channels, retries=3, delay=5):
     """Generate social media content for multiple channels with retry logic."""
     generated_content = {}
