@@ -5,7 +5,7 @@ import openai
 import time
 
 # Configure API Keys
-SERP_API_KEY = st.secrets["SERPER_API_KEY"]
+SERPER_API_KEY = st.secrets["SERPER_API_KEY"]
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 import requests
