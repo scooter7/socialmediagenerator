@@ -32,9 +32,8 @@ self_ask_with_search = initialize_agent(
     handle_parsing_errors=True  # Enable parsing error handling
 )
 
-# Function to manage post length limits
 def limit_post_length(content, channel):
-    """Limit the length of the content based on the channel."""
+    """Limit the length of the content based on the channel, ensuring complete sentences."""
     limits = {
         "X": 280,  # Twitter character limit
         "Facebook": 2000,  # Facebook recommended limit
@@ -43,9 +42,17 @@ def limit_post_length(content, channel):
         "TikTok": 150  # TikTok caption limit
     }
     max_length = limits.get(channel, 2000)  # Default limit if unspecified
-    return content[:max_length]
+    if len(content) <= max_length:
+        return content  # No truncation needed
 
-# Function to search for college facts
+    truncated = content[:max_length]  # Truncate to max length
+    # Find the last sentence delimiter within the truncated content
+    last_delimiter = max(truncated.rfind('.'), truncated.rfind('!'), truncated.rfind('?'))
+    if last_delimiter != -1:
+        return truncated[:last_delimiter + 1]  # Include the sentence-ending punctuation
+    else:
+        return truncated  # No sentence delimiter found; return truncated content
+
 def search_college_facts(college_name):
     """Search for interesting facts about the college/university."""
     query = f"Find some interesting and notable facts about {college_name}."
@@ -61,7 +68,6 @@ def search_college_facts(college_name):
         st.error(f"Error fetching results: {e}")
         return ""
 
-# Function to generate social media content
 def generate_social_content_with_retry(main_content, selected_channels, retries=3, delay=5):
     """Generate social media content for multiple channels with retry logic."""
     generated_content = {}
