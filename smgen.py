@@ -1,19 +1,21 @@
+import os
 import streamlit as st
-from serper import Serper
+import serpapi
 import openai
 import time
 
-# Configure OpenAI API key
+# Configure API Keys
+SERP_API_KEY = st.secrets["SERPER_API_KEY"]
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Configure Serper API key
-SERPER_API_KEY = st.secrets["SERPER_API_KEY"]
-
 def search_college_facts(college_name):
-    """Search for interesting facts about the college/university using Serper."""
-    serper_client = Serper(api_key=SERPER_API_KEY)
-    response = serper_client.search(f"Interesting facts about {college_name}")
-    facts = [result['snippet'] for result in response.get('organic', []) if 'snippet' in result]
+    """Search for interesting facts about the college/university using SerpAPI."""
+    client = serpapi.Client(api_key=SERP_API_KEY)
+    results = client.search({
+        'engine': 'google',
+        'q': f"Interesting facts about {college_name}"
+    })
+    facts = [result['snippet'] for result in results.get('organic_results', []) if 'snippet' in result]
     return facts
 
 def generate_social_content_with_retry(main_content, selected_channels, retries=3, delay=5):
@@ -23,7 +25,7 @@ def generate_social_content_with_retry(main_content, selected_channels, retries=
         for i in range(retries):
             try:
                 prompt = f"Generate a {channel.capitalize()} post based on this content:\n{main_content}\n"
-                response = openai.chat.completions.create(
+                response = openai.ChatCompletion.create(
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "You are a social media content generator."},
@@ -59,12 +61,12 @@ if st.button("Generate Social Media Content"):
     else:
         st.info("Searching for interesting facts...")
         facts = search_college_facts(college_name)
-        
+
         if facts:
             st.success("Interesting facts found. Generating posts...")
             main_content = f"Topic: {topic}\nInteresting Facts: {' '.join(facts)}"
             social_content = generate_social_content_with_retry(main_content, selected_channels)
-            
+
             for channel, content in social_content.items():
                 st.subheader(f"{channel.capitalize()} Post")
                 st.text_area(f"Generated Content for {channel}:", content, height=200)
