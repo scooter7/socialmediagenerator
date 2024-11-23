@@ -1,22 +1,19 @@
 import streamlit as st
-from serpapi import GoogleSearch
+from serper import Serper
 import openai
 import time
 
 # Configure OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Configure SerpAPI key
+# Configure Serper API key
 SERPER_API_KEY = st.secrets["SERPER_API_KEY"]
 
 def search_college_facts(college_name):
-    """Search for interesting facts about the college/university using Serper API."""
-    search = GoogleSearch({
-        "q": f"Interesting facts about {college_name}",
-        "api_key": SERPER_API_KEY
-    })
-    results = search.get_dict()
-    facts = [result["snippet"] for result in results.get("organic_results", [])]
+    """Search for interesting facts about the college/university using Serper."""
+    serper_client = Serper(api_key=SERPER_API_KEY)
+    response = serper_client.search(f"Interesting facts about {college_name}")
+    facts = [result['snippet'] for result in response.get('organic', []) if 'snippet' in result]
     return facts
 
 def generate_social_content_with_retry(main_content, selected_channels, retries=3, delay=5):
