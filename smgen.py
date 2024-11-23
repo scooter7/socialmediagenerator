@@ -1,30 +1,25 @@
-import os
 import streamlit as st
-import serpapi
+from serper import Serper
 import openai
 import time
 
-# Configure API Keys
+# Configure OpenAI and Serper API keys
 SERPER_API_KEY = st.secrets["SERPER_API_KEY"]
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-import requests
-
 def search_college_facts(college_name):
-    """Search for interesting facts about the college/university using SerpAPI."""
-    url = "https://serpapi.com/search"
-    params = {
-        "engine": "google",
-        "q": f"Interesting facts about {college_name}",
-        "api_key": SERPER_API_KEY
-    }
-    response = requests.get(url, params=params)
-    if response.status_code == 401:
-        raise ValueError("Invalid or unauthorized SerpAPI key.")
-    response.raise_for_status()  # Raise an error for other HTTP issues
-    results = response.json()
-    facts = [result['snippet'] for result in results.get('organic_results', []) if 'snippet' in result]
-    return facts
+    """Search for interesting facts about the college/university using Serper."""
+    serper_client = Serper(SERPER_API_KEY)  # Initialize Serper client with API key
+    try:
+        response = serper_client.search(f"Interesting facts about {college_name}")
+        if "organic" in response:
+            facts = [result["snippet"] for result in response["organic"] if "snippet" in result]
+            return facts
+        else:
+            return []
+    except Exception as e:
+        st.error(f"Error fetching results: {e}")
+        return []
 
 def generate_social_content_with_retry(main_content, selected_channels, retries=3, delay=5):
     """Generate social media content for multiple channels with retry logic."""
@@ -49,7 +44,7 @@ def generate_social_content_with_retry(main_content, selected_channels, retries=
                 if 'overloaded' in str(e).lower() and i < retries - 1:
                     time.sleep(delay)
                 else:
-                    generated_content[channel] = "Error generating content."
+                    generated_content[channel] = f"Error generating content: {str(e)}"
     return generated_content
 
 # Streamlit UI
