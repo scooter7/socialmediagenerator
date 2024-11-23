@@ -1,26 +1,45 @@
 import streamlit as st
-from serper import Serper
-import openai
-import time
+from langchain_community.utilities import GoogleSerperAPIWrapper
+from langchain_openai import OpenAI
+from langchain.agents import initialize_agent, Tool
+from langchain.agents import AgentType
+import os
 
-# Configure OpenAI and Serper API keys
-SERPER_API_KEY = st.secrets["SERPER_API_KEY"]
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# Set environment variables
+os.environ["SERPER_API_KEY"] = st.secrets["SERPER_API_KEY"]
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
+# Initialize LangChain components
+llm = OpenAI(temperature=0)
+search = GoogleSerperAPIWrapper()
+tools = [
+    Tool(
+        name="Intermediate Answer",
+        func=search.run,
+        description="Useful for answering questions using search."
+    )
+]
+
+# Initialize self-ask-with-search agent
+self_ask_with_search = initialize_agent(
+    tools,
+    llm,
+    agent=AgentType.SELF_ASK_WITH_SEARCH,
+    verbose=True
+)
+
+# Helper function to search for facts about a college
 def search_college_facts(college_name):
-    """Search for interesting facts about the college/university using Serper."""
-    serper_client = Serper(SERPER_API_KEY)  # Initialize Serper client with API key
+    """Search for interesting facts about the college/university."""
+    query = f"Interesting facts about {college_name}"
     try:
-        response = serper_client.search(f"Interesting facts about {college_name}")
-        if "organic" in response:
-            facts = [result["snippet"] for result in response["organic"] if "snippet" in result]
-            return facts
-        else:
-            return []
+        response = self_ask_with_search.run(query)
+        return response
     except Exception as e:
         st.error(f"Error fetching results: {e}")
-        return []
+        return ""
 
+# Helper function to generate social media posts
 def generate_social_content_with_retry(main_content, selected_channels, retries=3, delay=5):
     """Generate social media content for multiple channels with retry logic."""
     generated_content = {}
@@ -28,20 +47,12 @@ def generate_social_content_with_retry(main_content, selected_channels, retries=
         for i in range(retries):
             try:
                 prompt = f"Generate a {channel.capitalize()} post based on this content:\n{main_content}\n"
-                response = openai.ChatCompletion.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are a social media content generator."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=500
-                )
-                content = response['choices'][0]['message']['content']
-                if content:
-                    generated_content[channel] = content.strip()
+                response = llm(prompt)
+                if response:
+                    generated_content[channel] = response.strip()
                 break
             except Exception as e:
-                if 'overloaded' in str(e).lower() and i < retries - 1:
+                if i < retries - 1:
                     time.sleep(delay)
                 else:
                     generated_content[channel] = f"Error generating content: {str(e)}"
@@ -67,7 +78,7 @@ if st.button("Generate Social Media Content"):
 
         if facts:
             st.success("Interesting facts found. Generating posts...")
-            main_content = f"Topic: {topic}\nInteresting Facts: {' '.join(facts)}"
+            main_content = f"Topic: {topic}\nInteresting Facts: {facts}"
             social_content = generate_social_content_with_retry(main_content, selected_channels)
 
             for channel, content in social_content.items():
