@@ -1,5 +1,5 @@
 import streamlit as st
-from langchain.agents import initialize_agent, load_tools, AgentType
+from langchain.agents import initialize_agent, load_tools, Tool, AgentType
 from langchain_openai import OpenAI
 import os
 
@@ -10,8 +10,14 @@ os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 # Initialize OpenAI model
 llm = OpenAI(temperature=0)
 
-# Load Serper tool
-tools = load_tools(["google-serper"])
+# Load Serper tool and rename it
+tools = [
+    Tool(
+        name="Intermediate Answer",  # Rename tool to match agent expectations
+        func=load_tools(["google-serper"])[0].run,
+        description="Useful for answering questions using search."
+    )
+]
 
 # Initialize self-ask-with-search agent
 self_ask_with_search = initialize_agent(
