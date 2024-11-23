@@ -8,7 +8,7 @@ import time
 SERP_API_KEY = st.secrets["SERPER_API_KEY"]
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-dimport requests
+import requests
 
 def search_college_facts(college_name):
     """Search for interesting facts about the college/university using SerpAPI."""
