@@ -8,13 +8,21 @@ import time
 SERP_API_KEY = st.secrets["SERPER_API_KEY"]
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
+dimport requests
+
 def search_college_facts(college_name):
     """Search for interesting facts about the college/university using SerpAPI."""
-    client = serpapi.Client(api_key=SERP_API_KEY)
-    results = client.search({
-        'engine': 'google',
-        'q': f"Interesting facts about {college_name}"
-    })
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "google",
+        "q": f"Interesting facts about {college_name}",
+        "api_key": SERPER_API_KEY
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 401:
+        raise ValueError("Invalid or unauthorized SerpAPI key.")
+    response.raise_for_status()  # Raise an error for other HTTP issues
+    results = response.json()
     facts = [result['snippet'] for result in results.get('organic_results', []) if 'snippet' in result]
     return facts
 
