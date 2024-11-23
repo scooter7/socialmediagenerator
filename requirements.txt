@@ -1,4 +1,4 @@
-streamlit 
-openai 
-serpapi
-serper
+streamlit
+openai
+langchain-openai
+langchain-community
